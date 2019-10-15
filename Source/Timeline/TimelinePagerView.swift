@@ -5,7 +5,7 @@ import DateToolsSwift
 public protocol TimelinePagerViewDelegate: AnyObject {
   func timelinePagerDidSelectEventView(_ eventView: EventView)
   func timelinePagerDidLongPressEventView(_ eventView: EventView)
-  func timelinePagerDidTap(timelinePager: TimelinePagerView)
+  func timelinePager(timelinePager: TimelinePagerView, didTapAt date: Date)
   func timelinePager(timelinePager: TimelinePagerView, willMoveTo date: Date)
   func timelinePager(timelinePager: TimelinePagerView, didMoveTo  date: Date)
   func timelinePager(timelinePager: TimelinePagerView, didLongPressTimelineAt date: Date)
@@ -370,8 +370,8 @@ public class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScrollVie
 
   // MARK: TimelineViewDelegate
 
-  public func timelineViewDidTap(_ timelineView: TimelineView) {
-    delegate?.timelinePagerDidTap(timelinePager: self)
+  public func timelineView(_ timelineView: TimelineView, didTapAt date: Date) {
+    delegate?.timelinePager(timelinePager: self, didTapAt: date)
   }
   public func timelineView(_ timelineView: TimelineView, didLongPressAt date: Date) {
     delegate?.timelinePager(timelinePager: self, didLongPressTimelineAt: date)

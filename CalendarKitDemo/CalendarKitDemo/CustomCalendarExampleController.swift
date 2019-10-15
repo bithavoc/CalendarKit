@@ -38,7 +38,7 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
 
               ]
 
-  var generatedEvents = [Date:[EventDescriptor]]()
+  var generatedEvents = [Date:[MyEvent]]()
 
   var colors = [UIColor.blue,
                 UIColor.yellow,
@@ -47,22 +47,18 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
 
   var currentStyle = SelectedStyle.Light
 
-  lazy var customCalendar: Calendar = {
-    let customNSCalendar = NSCalendar(identifier: NSCalendar.Identifier.gregorian)!
-    customNSCalendar.timeZone = TimeZone(abbreviation: "CEST")!
-    let calendar = customNSCalendar as Calendar
-    return calendar
-  }()
-
   override func loadView() {
-    calendar = customCalendar
+    calendar = Calendar.autoupdatingCurrent
     dayView = DayView(calendar: calendar)
+    let style = CalendarStyle()
+    style.timeline.dateStyle = .twelveHour
+    dayView.updateStyle(style)
     view = dayView
   }
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = "CalendarKit Demo"
+    title = "Hitcal Playground"
     navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Dark",
                                                         style: .done,
                                                         target: self,
@@ -139,18 +135,22 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
   }
 
   // MARK: EventDataSource
+  
+  var currentDate: Date?
 
   override func eventsForDate(_ date: Date) -> [EventDescriptor] {
+    self.currentDate = date
+    print("eventsForDate", date)
     var workingDate = date.add(TimeChunk.dateComponents(hours: Int(arc4random_uniform(10) + 5)))
 
     if let storedEvents = generatedEvents[date], !storedEvents.isEmpty {
       return storedEvents
     }
 
-    var events = [Event]()
+    var events = [MyEvent]()
 
     for i in 0...4 {
-      let event = Event()
+      let event = MyEvent()
       let duration = Int(arc4random_uniform(160) + 60)
       let datePeriod = TimePeriod(beginning: workingDate,
                                   chunk: TimeChunk.dateComponents(minutes: duration))
@@ -198,10 +198,17 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
   // MARK: DayViewDelegate
 
   override func dayViewDidSelectEventView(_ eventView: EventView) {
-    guard let descriptor = eventView.descriptor as? Event else {
+    guard let descriptor = eventView.descriptor as? MyEvent else {
       return
     }
-    print("Event has been selected: \(descriptor) \(String(describing: descriptor.userInfo))")
+    print("Event has been selected: \(descriptor.id) \(String(describing: descriptor.userInfo))")
+    
+    var events = generatedEvents[currentDate!]!
+    print("before remove count", events.count)
+    events.removeAll { return $0 == descriptor }
+    print("after remove count", events.count)
+    generatedEvents[currentDate!] = events
+    dayView.reloadData()
   }
 
   override func dayViewDidLongPressEventView(_ eventView: EventView) {
@@ -214,9 +221,10 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
     print(Date())
   }
 
-  override func dayViewDidTapTimeline(dayView: DayView) {
+  override func dayView(dayView: DayView, didTapTimelineAt date: Date) {
     dayView.cancelPendingEventCreation()
-    print("Did Tap")
+    dayView.reloadData()
+    self.createSampleEvent(at: date)
   }
 
   override func dayView(dayView: DayView, willMoveTo date: Date) {
@@ -226,45 +234,86 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
   override func dayView(dayView: DayView, didMoveTo date: Date) {
     print("DayView = \(dayView) did move to: \(date)")
   }
+  
+  func createSampleEvent(at date: Date) {
+    let duration = Int(60)
+    
+    let datePeriod = getDateInterval(date:date, duration: duration)
+    print("Did Tap selected date \(date) for period \(datePeriod.beginning?.debugDescription ?? "") to \(datePeriod.end?.debugDescription ?? "")")
+    
+    dayView.cancelPendingEventCreation()
+    let event = MyEvent()
+      // let duration = Int(arc4random_uniform(160) + 60)
+    event.startDate = datePeriod.beginning!
+    event.endDate = datePeriod.end!
+
+    var info = data[Int(arc4random_uniform(UInt32(data.count)))]
+    let timezone = dayView.calendar.timeZone
+    info.append(datePeriod.beginning!.format(with: "dd.MM.YYYY", timeZone: timezone))
+    info.append("\(datePeriod.beginning!.format(with: "HH:mm", timeZone: timezone)) - \(datePeriod.end!.format(with: "HH:mm", timeZone: timezone))")
+    event.text = info.reduce("", {$0 + $1 + "\n"})
+    event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
+    // event.editedEvent = event
+
+    // Event styles are updated independently from CalendarStyle
+    // hence the need to specify exact colors in case of Dark style
+    if currentStyle == .Dark {
+      event.textColor = textColorForEventInDarkTheme(baseColor: event.color)
+      event.backgroundColor = event.color.withAlphaComponent(0.6)
+    }
+    print("Creating a new event")
+    // dayView.create(event: event, animated: true)
+    // event.commitEditing()
+    
+    
+    var events = generatedEvents[currentDate!]!
+    
+    if !events.contains(event) {
+      events.append(event)
+    }
+    generatedEvents[currentDate!] = events
+    dayView.reloadData()
+  }
 
   override func dayView(dayView: DayView, didLongPressTimelineAt date: Date) {
-    print("Did long press timeline at date \(date)")
-
-    let startDate = date
-      let event = Event()
-      let duration = Int(arc4random_uniform(160) + 60)
-      let datePeriod = TimePeriod(beginning: startDate,
-                                  chunk: TimeChunk.dateComponents(minutes: duration))
-      event.startDate = datePeriod.beginning!
-      event.endDate = datePeriod.end!
-
-      var info = data[Int(arc4random_uniform(UInt32(data.count)))]
-      let timezone = dayView.calendar.timeZone
-      info.append(datePeriod.beginning!.format(with: "dd.MM.YYYY", timeZone: timezone))
-      info.append("\(datePeriod.beginning!.format(with: "HH:mm", timeZone: timezone)) - \(datePeriod.end!.format(with: "HH:mm", timeZone: timezone))")
-      event.text = info.reduce("", {$0 + $1 + "\n"})
-      event.color = colors[Int(arc4random_uniform(UInt32(colors.count)))]
-      event.editedEvent = event
-
-      // Event styles are updated independently from CalendarStyle
-      // hence the need to specify exact colors in case of Dark style
-      if currentStyle == .Dark {
-        event.textColor = textColorForEventInDarkTheme(baseColor: event.color)
-        event.backgroundColor = event.color.withAlphaComponent(0.6)
-      }
-    print("Creating a new event")
-    dayView.create(event: event, animated: true)
+    print("Did long press timeline at date \(date)", date)
+    self.createSampleEvent(at: date)
   }
 
   override func dayView(dayView: DayView, didUpdate event: EventDescriptor) {
     print("did finish editing \(event)")
     print("new startDate: \(event.startDate) new endDate: \(event.endDate)")
-
-    if let edited = event.editedEvent {
+    if let _ = event.editedEvent {
       event.commitEditing()
     }
-
+    dayView.cancelPendingEventCreation()
     dayView.reloadData()
-//    dayView.cancelPendingEventCreation()
+  }
+  private func component(component: Calendar.Component, from date: Date) -> Int {
+    return calendar.component(component, from: date)
+  }
+  private func getDateInterval(date: Date, duration: Int) -> TimePeriod {
+    let earliestEventMintues = component(component: .minute, from: date)
+    let splitMinuteInterval = 30
+    let minute = component(component: .minute, from: date)
+    let minuteRange = (minute / splitMinuteInterval) * splitMinuteInterval
+    let beginningRange = calendar.date(byAdding: .minute, value: -(earliestEventMintues - minuteRange), to: date)!
+    let endRange = calendar.date(byAdding: .minute, value: duration, to: beginningRange)
+    return TimePeriod.init(beginning: beginningRange, end: endRange)
+  }
+}
+
+class MyEvent: Event {
+  var id = UUID().uuidString
+  override func makeEditable() -> Self {
+    let editable = super.makeEditable() as! Self
+    editable.id = id
+    return editable
+  }
+}
+
+extension MyEvent: Equatable {
+  static func == (lhs: MyEvent, rhs: MyEvent) -> Bool {
+    return lhs.id == rhs.id
   }
 }
