@@ -21,7 +21,7 @@ public final class Event: EventDescriptor {
     }
   }
 
-  public init() {}
+  required public init() {}
 
   public func makeEditable() -> Event {
     let cloned = Event()
