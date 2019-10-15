@@ -215,6 +215,8 @@ class CustomCalendarExampleController: DayViewController, DatePickerControllerDe
     guard let descriptor = eventView.descriptor as? Event else {
       return
     }
+    
+    dayView.cancelPendingEventCreation()
 
     print("Event has been longPressed: \(descriptor) \(String(describing: descriptor.userInfo))")
     dayView.beginEditing(event: descriptor, animated: true)
