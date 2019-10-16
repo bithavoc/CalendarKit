@@ -219,9 +219,9 @@ public class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScrollVie
 
   private var prevOffset: CGPoint = .zero
   @objc func handlePanGesture(_ sender: UIPanGestureRecognizer) {
-    print("handlePanGesture")
+    // print("handlePanGesture")
     if let pendingEvent = pendingEvent {
-      print("handlePanGesture with pendingEvent")
+      // print("handlePanGesture with pendingEvent")
       let newCoord = sender.translation(in: pendingEvent)
       if sender.state == .began {
         prevOffset = newCoord
@@ -239,7 +239,7 @@ public class TimelinePagerView: UIView, UIGestureRecognizerDelegate, UIScrollVie
     }
 
     if sender.state == .ended {
-      print("handlePanGesture commitEditing")
+      // print("handlePanGesture commitEditing")
       commitEditing()
     }
   }
